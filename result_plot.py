@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-N = 2000
+N = 5000
 
 def moving_average(l):
     MA = []
@@ -14,7 +14,7 @@ def moving_average(l):
     return MA
 
 result = np.load('result.npy')
-# result = result[:200000]
+result = result[:250]
 MA = moving_average(result)
 
 plt.plot(range(len(MA)), MA)

@@ -5,6 +5,8 @@ from copy import deepcopy
 import gym
 import numpy as np
 
+import sys
+
 '''
 ・・・・・・・
 ・・14151617・
@@ -64,6 +66,21 @@ action_list = [np.array([1.0, 0.0]),
                np.array([0.0, 1.0]),
                np.array([0.0, -1.0])]
 
+legal_action = True
+
+legal_action_list = {}
+legal_action_list[1] = [0, 3]
+legal_action_list[2] = [0, 1]
+legal_action_list[3] = [0, 1, 3]
+legal_action_list[4] = [1]
+legal_action_list[5] = [1, 2]
+legal_action_list[6] = [2, 3]
+legal_action_list[7] = [0]
+legal_action_list[8] = [0, 1, 2, 3]
+legal_action_list[9] = [0, 2]
+legal_action_list[10] = [1, 3]
+legal_action_list[11] = [0, 1, 2]
+
 max_step = 5000
 
 class Env():
@@ -90,13 +107,15 @@ class Env():
         self.steps += 1
         c_state = self.state
         self.state = self.state+action_list[action]
-        if not self.check_legal():
-            self.state = c_state
+        if legal_action:
+            if not self.check_legal():
+                print('error')
+                sys.exit()
+        else:
+            if not self.check_legal():
+                self.state = c_state
         if self.state[0] == goal_state[0] and self.state[1] == goal_state[1]:
-            reward = 100.0/(self.steps-7.0)
-            done = True
-        elif self.steps == max_step:
-            reward = 0.0
+            reward = 100.0
             done = True
         else:
             reward = 0.0

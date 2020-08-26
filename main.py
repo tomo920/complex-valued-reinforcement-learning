@@ -1,5 +1,13 @@
-from q_learning import QLearning
+algorithm = 'q_learning'
 
-q_learning = QLearning()
+if algorithm == 'qdot_learning':
+    from qdot_learning import QdotLearning
+    learning = QdotLearning()
+elif algorithm == 'q_learning':
+    from q_learning import QLearning
+    learning = QLearning()
+elif algorithm == 'randomwalk':
+    from randomwalk import RandomWalk
+    learning = RandomWalk()
 
-q_learning.learn()
+learning.learn()

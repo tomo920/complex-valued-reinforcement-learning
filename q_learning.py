@@ -1,16 +1,19 @@
 import numpy as np
 
-from pomaze_env import Env, legal_states, max_step
+from pomaze_env import Env, legal_states, max_step, legal_action, legal_action_list
 
 action_size = 4
 epsilon_start = 1.0
 epsilon_end = 0
 epsilon_decay_steps = 50000
-episode_num = 500000
+episode_num = 500
 save_period = 10
 update_num = 10
-alpha = 0.1
+alpha_init = 0.001
 gamma = 0.9
+
+policy_type = 'boltzmann'
+T_init = 100.0
 
 result = []
 
@@ -25,17 +28,37 @@ class QLearning(): #o
         # initialize Q table
         self.Q = {}
         for observation in range(1, 12):
-            self.Q[observation] = np.zeros(action_size)
+            if legal_action:
+                self.Q[observation] = {}
+                for a in legal_action_list[observation]:
+                    self.Q[observation][a] = 0.0
+            else:
+                self.Q[observation] = np.zeros(action_size)
 
     def get_policy(self, observation, epsilon):
-        '''
-        epsilon greedy policy
-        '''
-        pi = np.ones(action_size, dtype='float32') * epsilon / action_size
-        q = self.Q[observation]
-        max_action = np.argmax(q)
-        pi[max_action] += 1.0-epsilon
-        return pi
+        if policy_type == 'epsilon greedy':
+            '''
+            epsilon greedy policy
+            '''
+            if legal_action:
+                a_size = len(legal_action_list[observation])
+                q = self.Q[observation].values()
+            else:
+                a_size = action_size
+                q = self.Q[observation]
+            pi = np.ones(a_size, dtype='float32') * epsilon / a_size
+            max_action = np.argmax(q)
+            pi[max_action] += 1.0-epsilon
+            return pi
+        elif policy_type == 'boltzmann':
+            '''
+            boltzmann policy
+            '''
+            if legal_action:
+                e_Q = np.exp([Q / self.T for Q in self.Q[observation].values()])
+            else:
+                e_Q = np.exp([Q / self.T for Q in self.Q[observation]])
+            return e_Q / np.sum(e_Q)
 
     def learn(self):
         epsilons = np.linspace(epsilon_start, epsilon_end, epsilon_decay_steps)
@@ -46,20 +69,42 @@ class QLearning(): #o
                 np.save('result', result)
             # execute episode
             observation = self.env.reset()
+            # update alpha
+            self.alpha = alpha_init * (episode_num - i)
+            # update T
+            self.T = T_init / (1 + i)
+            # initialize history
+            self.o_history = []
+            self.a_history = []
             epsilon = epsilons[min(i, epsilon_decay_steps-1)]
             while True:
                 pi = self.get_policy(observation, epsilon)
-                action = np.random.choice(action_size, p = pi)
+                if legal_action:
+                    action = np.random.choice(legal_action_list[observation], p = pi)
+                else:
+                    action = np.random.choice(action_size, p = pi)
                 next_observation, reward, done = self.env.step(action)
-                if self.env.steps == max_step:
+                if self.env.steps > max_step:
+                    result.append(self.env.steps)
                     break
+                # update history
+                self.o_history.append(observation)
+                self.a_history.append(action)
                 # update Q table
-                self.update_q(observation, action, next_observation, reward, done)
+                self.update_q(next_observation, reward, done)
                 if done:
-                    result.append(reward)
+                    result.append(self.env.steps)
                     break
                 else:
                     observation = next_observation
 
-    def update_q(self, observation, action, next_observation, reward, done):
-        self.Q[observation][action] = self.Q[observation][action] + alpha*(reward+gamma*np.max(self.Q[next_observation])*(1.0-done) - self.Q[observation][action])
+    def update_q(self, next_observation, reward, done):
+        if legal_action:
+            q = [Q for Q in self.Q[next_observation].values()]
+        else:
+            q = self.Q[next_observation]
+        next_q = reward + gamma * np.max(q) * (1.0-done)
+        observation = self.o_history[-1]
+        action = self.a_history[-1]
+        self.Q[observation][action] = self.Q[observation][action] \
+            + self.alpha * (next_q - self.Q[observation][action])
