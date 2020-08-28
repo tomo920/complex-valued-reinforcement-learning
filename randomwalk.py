@@ -2,10 +2,14 @@ import numpy as np
 import math
 import cmath
 
-from pomaze_env import Env, legal_states, max_step, legal_action, legal_action_list
+task = 'po_acrobot' #'po_maze' or 'po_acrobot'
 
-action_size = 4
-episode_num = 500
+if task == 'po_maze':
+    from pomaze_env import Env, legal_states, max_step, legal_action, legal_action_list, observation_size, action_size
+elif task == 'po_acrobot':
+    from po_acrobot import Env, max_step, legal_action, observation_size, action_size
+
+episode_num = 500000
 save_period = 10
 
 result = []

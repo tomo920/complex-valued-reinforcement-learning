@@ -2,22 +2,37 @@ import numpy as np
 import math
 import cmath
 
-from pomaze_env import Env, legal_states, max_step, legal_action, legal_action_list
+task = 'po_acrobot' #'po_maze' or 'po_acrobot'
 
-action_size = 4
-epsilon_start = 1.0
-epsilon_end = 0
-epsilon_decay_steps = 50000
-episode_num = 500000
-save_period = 10
-update_num = 10
-beta = cmath.rect(1, math.pi/6.0)
-alpha = 0.25
-gamma = 0.9
-Ne = 1
-
-policy_type = 'boltzmann'
-T = 20.0
+if task == 'po_maze':
+    from pomaze_env import Env, legal_states, max_step, legal_action, legal_action_list, observation_size, action_size
+    epsilon_start = 1.0
+    epsilon_end = 0
+    epsilon_decay_steps = 50000
+    episode_num = 500000
+    save_period = 10
+    update_num = 10
+    beta = cmath.rect(1, math.pi/6.0)
+    alpha = 0.25
+    gamma = 0.9
+    Ne = 1
+    policy_type = 'boltzmann'
+    T = 20.0
+elif task == 'po_acrobot':
+    from po_acrobot import Env, max_step, legal_action, observation_size, action_size
+    epsilon_start = 1.0
+    epsilon_end = 0
+    epsilon_decay_steps = 50000
+    episode_num = 500000
+    save_period = 10
+    update_num = 10
+    beta = cmath.rect(1, math.pi/180.0)
+    alpha = 0.15
+    gamma = 0.9
+    Ne = 6
+    # Ne = 1
+    policy_type = 'boltzmann'
+    T = 10.0
 
 result = []
 
@@ -31,7 +46,7 @@ class QdotLearning(): #o
         self.env = Env()
         # initialize Q table
         self.Q = {}
-        for observation in range(1, 12):
+        for observation in range(1, observation_size+1):
             if legal_action:
                 self.Q[observation] = {}
                 for a in legal_action_list[observation]:

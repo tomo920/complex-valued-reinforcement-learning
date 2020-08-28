@@ -1,19 +1,32 @@
 import numpy as np
 
-from pomaze_env import Env, legal_states, max_step, legal_action, legal_action_list
+task = 'po_acrobot' #'po_maze' or 'po_acrobot'
 
-action_size = 4
-epsilon_start = 1.0
-epsilon_end = 0
-epsilon_decay_steps = 50000
-episode_num = 500
-save_period = 10
-update_num = 10
-alpha_init = 0.001
-gamma = 0.9
-
-policy_type = 'boltzmann'
-T_init = 100.0
+if task == 'po_maze':
+    from pomaze_env import Env, legal_states, max_step, legal_action, legal_action_list, observation_size, action_size
+    epsilon_start = 1.0
+    epsilon_end = 0
+    epsilon_decay_steps = 50000
+    episode_num = 500
+    save_period = 10
+    update_num = 10
+    alpha_init = 0.001
+    gamma = 0.9
+    policy_type = 'boltzmann'
+    T_init = 100.0
+elif task == 'po_acrobot':
+    from po_acrobot import Env, max_step, legal_action, observation_size, action_size
+    epsilon_start = 1.0
+    epsilon_end = 0
+    epsilon_decay_steps = 50000
+    episode_num = 500000
+    save_period = 10
+    update_num = 10
+    alpha = 0.25
+    gamma = 0.9
+    policy_type = 'boltzmann'
+    T = 0.1
+    # T = 10.0
 
 result = []
 
@@ -27,7 +40,7 @@ class QLearning(): #o
         self.env = Env()
         # initialize Q table
         self.Q = {}
-        for observation in range(1, 12):
+        for observation in range(1, observation_size+1):
             if legal_action:
                 self.Q[observation] = {}
                 for a in legal_action_list[observation]:
@@ -69,10 +82,14 @@ class QLearning(): #o
                 np.save('result', result)
             # execute episode
             observation = self.env.reset()
-            # update alpha
-            self.alpha = alpha_init * (episode_num - i)
-            # update T
-            self.T = T_init / (1 + i)
+            if task == 'po_maze':
+                # update alpha
+                self.alpha = alpha_init * (episode_num - i)
+                # update T
+                self.T = T_init / (1 + i)
+            elif task == 'po_acrobot':
+                self.alpha = alpha
+                self.T = T
             # initialize history
             self.o_history = []
             self.a_history = []

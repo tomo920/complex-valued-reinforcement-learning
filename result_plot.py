@@ -14,8 +14,9 @@ def moving_average(l):
     return MA
 
 result = np.load('result.npy')
-result = result[:250]
-MA = moving_average(result)
+# result = result[:250]
+# MA = moving_average(result)
+MA = result
 
 plt.plot(range(len(MA)), MA)
 plt.show()

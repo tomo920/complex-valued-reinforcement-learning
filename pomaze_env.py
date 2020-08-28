@@ -51,6 +51,8 @@ observation_list[legal_states[15]] = 2
 observation_list[legal_states[16]] = 3
 observation_list[legal_states[17]] = 4
 
+observation_size = 11
+
 start_state = np.array([1.0, 3.0])
 goal_state = np.array([5.0, 3.0])
 
@@ -65,6 +67,8 @@ action_list = [np.array([1.0, 0.0]),
                np.array([-1.0, 0.0]),
                np.array([0.0, 1.0]),
                np.array([0.0, -1.0])]
+
+action_size = 4
 
 legal_action = True
 
