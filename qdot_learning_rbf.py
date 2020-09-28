@@ -1,8 +1,9 @@
 import numpy as np
 import math
 import cmath
+from rbfnet import RBFNet
 
-task = 'po_mountain_car' #'po_maze' or 'po_acrobot' or 'po_mountain_car'
+task = 'po_mountain_car' #'po_maze' or 'po_acrobot' or 'po_mountain_car' or 'mountain_car' or 'acrobot'
 
 if task == 'po_maze':
     from pomaze_env import Env, legal_states, max_step, legal_action, legal_action_list, observation_size, action_size
@@ -41,16 +42,39 @@ elif task == 'po_mountain_car':
     episode_num = 5000
     save_period = 10
     update_num = 10
-    gamma = 0.9
+    gamma = 0.7
     policy_type = 'boltzmann'
-    T = 10.0
+    T = 0.5
     beta = cmath.rect(1, math.pi/180.0)
-    alpha = 0.01
-    Ne = 6
+    Ne = 1
+    weight_lr = 0.01
+    mu_lr = 0.001
+    sigma_lr = 0.001
+    hidden_size = 5
 
 result = []
 
-class QdotLearning(): #o
+class ComplexRBFNet():
+    """
+    RBF network class for representing complex value
+    """
+
+    def __init__(self, input_size, hidden_size, weight_lr, mu_lr, sigma_lr):
+        self.real_part = RBFNet(input_size, hidden_size, weight_lr, mu_lr, sigma_lr)
+        self.imaginary_part = RBFNet(input_size, hidden_size, weight_lr, mu_lr, sigma_lr)
+
+    def outputs(self, input):
+        real = self.real_part.outputs(input)
+        imaginary = self.imaginary_part.outputs(input)
+        return complex(real, imaginary)
+
+    def update(self, input, td_error):
+        error_real = td_error.real
+        error_imag = td_error.imag
+        self.real_part.update(input, error_real)
+        self.imaginary_part.update(input, error_imag)
+
+class QdotLearning_RBF(): #o
     """
     Q learning class.
     Q value is the complex function of observation and action.
@@ -58,15 +82,13 @@ class QdotLearning(): #o
 
     def __init__(self):
         self.env = Env()
-        # initialize Q table
-        self.Q = {}
-        for observation in range(1, observation_size+1):
-            if legal_action:
-                self.Q[observation] = {}
-                for a in legal_action_list[observation]:
-                    self.Q[observation][a] = complex(0, 0)
-            else:
-                self.Q[observation] = [complex(0, 0) for _ in range(action_size)]
+        # initialize Q network
+        self.Q_network = []
+        for _ in range(action_size):
+            self.Q_network.append(ComplexRBFNet(observation_size, hidden_size, weight_lr, mu_lr, sigma_lr))
+
+    def get_q(self, observation):
+        return np.array([q_net.outputs(observation) for q_net in self.Q_network])
 
     def get_policy(self, observation, epsilon):
         if policy_type == 'epsilon greedy':
@@ -75,6 +97,7 @@ class QdotLearning(): #o
             '''
             if legal_action:
                 a_size = len(legal_action_list[observation])
+                # masking
             else:
                 a_size = action_size
             pi = np.ones(a_size, dtype='float32') * epsilon / a_size
@@ -85,17 +108,21 @@ class QdotLearning(): #o
             '''
             boltzmann policy
             '''
+            q = self.get_q(observation)
             if legal_action:
-                e_Q = np.exp([(Q * self.I.conjugate()).real / T for Q in self.Q[observation].values()])
+                e_Q = np.exp([(Q * self.I.conjugate()).real / T for Q in q])
+                # masking
             else:
-                e_Q = np.exp([(Q * self.I.conjugate()).real / T for Q in self.Q[observation]])
+                e_Q = np.exp([(Q * self.I.conjugate()).real / T for Q in q])
             return e_Q / np.sum(e_Q)
 
     def get_max_action(self, observation):
+        q = self.get_q(observation)
         if legal_action:
-            return np.argmax([(Q * self.I.conjugate()).real for Q in self.Q[observation].values()])
+            return np.argmax([(Q * self.I.conjugate()).real for Q in q])
+            # masking
         else:
-            return np.argmax([(Q * self.I.conjugate()).real for Q in self.Q[observation]])
+            return np.argmax([(Q * self.I.conjugate()).real for Q in q])
 
     def learn(self):
         epsilons = np.linspace(epsilon_start, epsilon_end, epsilon_decay_steps)
@@ -107,12 +134,14 @@ class QdotLearning(): #o
             # execute episode
             observation = self.env.reset()
             # initialize internal reference value
+            q = self.get_q(observation)
             if legal_action:
-                a_index = np.argmax([abs(Q) for Q in self.Q[observation].values()])
+                a_index = np.argmax([abs(Q) for Q in q])
                 a = legal_action_list[observation][a_index]
+                # masking
             else:
-                a = np.argmax([abs(Q) for Q in self.Q[observation]])
-            self.I = self.Q[observation][a]
+                a = np.argmax([abs(Q) for Q in q])
+            self.I = q[a]
             # initialize history
             self.o_history = []
             self.a_history = []
@@ -121,6 +150,7 @@ class QdotLearning(): #o
                 pi = self.get_policy(observation, epsilon)
                 if legal_action:
                     action = np.random.choice(legal_action_list[observation], p = pi)
+                    # masking
                 else:
                     action = np.random.choice(action_size, p = pi)
                 next_observation, reward, done = self.env.step(action)
@@ -132,7 +162,7 @@ class QdotLearning(): #o
                 self.a_history.append(action)
                 # update internal reference valuue
                 self.update_I(observation, action)
-                # update Q table
+                # update Q network
                 self.update_q(next_observation, reward, done)
                 # update internal reference value
                 self.update_I(observation, action)
@@ -146,16 +176,18 @@ class QdotLearning(): #o
         if legal_action:
             a_index = self.get_max_action(next_observation)
             a = legal_action_list[next_observation][a_index]
+            # masking
         else:
             a = self.get_max_action(next_observation)
-        next_q = reward + gamma * self.Q[next_observation][a] * (1.0-done)
+        next_q = reward + gamma * self.get_q(next_observation)[a] * (1.0-done)
         for k in range(Ne):
             if len(self.o_history) < k+1:
                 break
             observation = self.o_history[-(k+1)]
             action = self.a_history[-(k+1)]
-            self.Q[observation][action] = self.Q[observation][action] \
-                + alpha * (next_q * beta**(k+1) - self.Q[observation][action])
+            td_error = next_q * beta**(k+1) - self.get_q(observation)[action]
+            self.Q_network[action].update(observation, td_error)
 
     def update_I(self, observation, action):
-        self.I = self.Q[observation][action] / beta
+        q = self.get_q(observation)
+        self.I = q[action] / beta

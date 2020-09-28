@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-N = 50
+N = 100
 
 def moving_average(l):
     MA = []
@@ -12,7 +12,7 @@ def moving_average(l):
         MA.append(Ave)
     return MA
 
-result = np.load('result.npy')
+result = np.load('result_qdot_rbf.npy')
 # result = result[:250]
 MA = moving_average(result)
 # MA = result
