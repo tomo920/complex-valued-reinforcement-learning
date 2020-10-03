@@ -1,4 +1,4 @@
-algorithm = 'qdot_learning'
+algorithm = 'qdot_learning_rbf'
 
 if algorithm == 'qdot_learning':
     from qdot_learning import QdotLearning
@@ -15,5 +15,8 @@ elif algorithm == 'q_learning_rbf':
 elif algorithm == 'qdot_learning_rbf':
     from qdot_learning_rbf import QdotLearning_RBF
     learning = QdotLearning_RBF()
+elif algorithm == 'qdot_learning_nnet':
+    from qdot_learning_nnet import QdotLearning_Nnet
+    learning = QdotLearning_Nnet()
 
 learning.learn()

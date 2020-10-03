@@ -3,7 +3,7 @@ import numpy as np
 from numpy import sin, cos, pi
 import math
 
-is_continuous = False
+is_continuous = True
 if is_continuous:
     observation_size = 1
 else:
@@ -24,6 +24,7 @@ o_n = np.linspace(min_position, max_position, observation_size+1)
 
 class Env():
     def __init__(self):
+        self.action_list = action_list
         self.reset()
 
     def discret(self, position):
@@ -33,7 +34,7 @@ class Env():
 
     def get_observation(self):
         if is_continuous:
-            return self.position
+            return np.array([self.position])
         else:
             return self.discret(self.position)
 

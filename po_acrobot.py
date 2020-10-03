@@ -2,6 +2,18 @@ import gym
 import numpy as np
 from numpy import sin, cos, pi
 
+is_continuous = True
+if is_continuous:
+    observation_size = 2
+else:
+    observation_size = 100
+
+legal_action = False
+action_size = 3
+
+max_step = 10000
+h0 = 0.5
+
 o1 = 0.01
 o2 = 0.05
 o3 = 0.1
@@ -17,17 +29,11 @@ for t_1  in range(1, 11):
     observation_list[t_1] = {}
     for t_2 in range(1, 11):
         observation_list[t_1][t_2] = (t_1 - 1)*10 + t_2
-observation_size = 100
-
-legal_action = False
-action_size = 3
-
-h0 = 0.5
-max_step = 10000
 
 class Env():
     def __init__(self):
         self.env = gym.make('Acrobot-v1')
+        self.action_list = self.env.env.AVAIL_TORQUE
         self.reset()
 
     def discret(self, theta):
@@ -56,9 +62,12 @@ class Env():
     def get_observation(self):
         theta1 = self.env.env.state[0]
         theta2 = self.env.env.state[1]
-        t_1 = self.discret(theta1)
-        t_2 = self.discret(theta2)
-        return observation_list[t_1][t_2]
+        if is_continuous:
+            return np.array([theta1, theta2])
+        else:
+            t_1 = self.discret(theta1)
+            t_2 = self.discret(theta2)
+            return observation_list[t_1][t_2]
 
     def reset(self):
         self.env.reset()

@@ -1,9 +1,9 @@
 import numpy as np
 import math
 import cmath
-from rbfnet import RBFNet
+from complexnet import CNnet
 
-task = 'po_mountain_car' #'po_maze' or 'po_acrobot' or 'po_mountain_car' or 'mountain_car' or 'acrobot'
+task = 'po_acrobot' #'po_maze' or 'po_acrobot' or 'po_mountain_car' or 'mountain_car' or 'acrobot'
 
 if task == 'po_maze':
     from pomaze_env import Env, legal_states, max_step, legal_action, legal_action_list, observation_size, action_size
@@ -32,10 +32,11 @@ elif task == 'po_acrobot':
     T = 0.5
     beta = cmath.rect(1, math.pi/180.0)
     Ne = 1
-    weight_lr = 0.001
-    mu_lr = 0.0001
-    sigma_lr = 0.0001
+    lr_h = 0.0001
+    lr_o = 0.001
+    action_dim = 1
     hidden_size = 30
+    all_positive_action = False
 elif task == 'po_mountain_car':
     from po_mountain_car import Env, max_step, legal_action, observation_size, action_size
     epsilon_start = 1.0
@@ -49,48 +50,51 @@ elif task == 'po_mountain_car':
     T = 0.5
     beta = cmath.rect(1, math.pi/180.0)
     Ne = 1
-    weight_lr = 0.001
-    mu_lr = 0.0001
-    sigma_lr = 0.0001
+    lr_h = 0.0001
+    lr_o = 0.001
+    action_dim = 1
     hidden_size = 30
+    all_positive_action = False
+
+if all_positive_action:
+    action_list = [action * 5.0 + 5.0 for action in action_list]
+
+hidden_config = {
+    'input_size': observation_size + action_dim,
+    'output_size': hidden_size,
+    'activation': 'tanh',
+    'lr': lr_h
+}
+
+output_config = {
+    'input_size': hidden_size,
+    'output_size': 1,
+    'activation': 'linear',
+    'lr': lr_o
+}
+
+layer_config = [hidden_config, output_config]
 
 result = []
 
-class ComplexRBFNet():
-    """
-    RBF network class for representing complex value
-    """
-
-    def __init__(self, input_size, hidden_size, weight_lr, mu_lr, sigma_lr):
-        self.real_part = RBFNet(input_size, hidden_size, weight_lr, mu_lr, sigma_lr)
-        self.imaginary_part = RBFNet(input_size, hidden_size, weight_lr, mu_lr, sigma_lr)
-
-    def outputs(self, input):
-        real = self.real_part.outputs(input)
-        imaginary = self.imaginary_part.outputs(input)
-        return complex(real, imaginary)
-
-    def update(self, input, td_error):
-        error_real = td_error.real
-        error_imag = td_error.imag
-        self.real_part.update(input, error_real)
-        self.imaginary_part.update(input, error_imag)
-
-class QdotLearning_RBF(): #o
+class QdotLearning_Nnet(): #o
     """
     Q learning class.
-    Q value is the complex function of observation and action.
+    Q value is expressed by complex valued neural network whose input is observation and action.
     """
 
     def __init__(self):
         self.env = Env()
         # initialize Q network
-        self.Q_network = []
-        for _ in range(action_size):
-            self.Q_network.append(ComplexRBFNet(observation_size, hidden_size, weight_lr, mu_lr, sigma_lr))
+        self.Q_network = CNnet(layer_config)
+
+    def get_q_o_a(self, observation, action):
+        action = np.array([self.env.action_list[action]])
+        input = np.concatenate([observation, action])
+        return self.Q_network.outputs(input.astype(np.complex128))
 
     def get_q(self, observation):
-        return np.array([q_net.outputs(observation) for q_net in self.Q_network])
+        return np.concatenate([self.get_q_o_a(observation, action) for action in range(action_size)])
 
     def get_policy(self, observation, epsilon):
         if policy_type == 'epsilon greedy':
@@ -189,8 +193,10 @@ class QdotLearning_RBF(): #o
                 break
             observation = self.o_history[-(k+1)]
             action = self.a_history[-(k+1)]
-            td_error = next_q * beta**(k+1) - self.get_q(observation)[action]
-            self.Q_network[action].update(observation, td_error)
+            action = np.array([self.env.action_list[action]])
+            input = np.concatenate([observation, action])
+            target = next_q * beta**(k+1)
+            self.Q_network.train(input.astype(np.complex128), target, 'square_error')
 
     def update_I(self, observation, action):
         q = self.get_q(observation)
