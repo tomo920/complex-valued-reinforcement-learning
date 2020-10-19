@@ -14,8 +14,9 @@ class PoEnv(Env):
             self.observation_size = config.n_equal_part
 
     def get_observation(self):
+        position = self.env.state[0]
         if self.config.is_continuous:
-            return np.array([self.position])
+            return np.array([position])
         else:
-            o1 = self.discret(self.position, self.o1_list)
+            o1 = self.discret(position, self.o1_list)
             return o1

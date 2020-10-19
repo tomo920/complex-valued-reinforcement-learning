@@ -14,8 +14,8 @@ class PoEnv(Env):
             self.observation_size = config.n_equal_part**2
 
     def get_observation(self):
-        theta1 = self.env.env.state[0]
-        theta2 = self.env.env.state[1]
+        theta1 = self.env.state[0]
+        theta2 = self.env.state[1]
         if self.config.is_continuous:
             return np.array([theta1, theta2])
         else:

@@ -2,8 +2,10 @@ import numpy as np
 import argparse
 import os
 import datetime
+import importlib
 
-from learn import Learner
+from learn import learning
+from agent import Agent
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Set parameters.')
@@ -69,10 +71,23 @@ if __name__ == '__main__':
     save_path = os.path.abspath("./result/{}_result".format(config.env_name))
     save_dir = os.path.join(save_path, "{0}_{1}".format(config.algorithm, datetime.datetime.now().isoformat()))
     os.makedirs(save_dir)
-
     with open('{}/config.txt'.format(save_dir), mode='w') as f:
         f.write(config_text)
 
+    # make Environment
+    env_module = importlib.import_module('envs.{}'.format(config.env_name))
+    if config.env_name.split('_')[0] == 'po':
+        env = env_module.PoEnv(config)
+    else:
+        env = env_module.Env(config)
+
+    # make Agent
+    agent = Agent(config, env)
+
     for i in range(config.n_epochs):
-        learner = Learner(config, i, save_dir)
-        learner.learn()
+        agent.reset_q_func()
+        learning(config,
+                 env,
+                 agent,
+                 i,
+                 save_dir)
