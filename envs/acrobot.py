@@ -7,7 +7,7 @@ sys.path.append(os.path.dirname(__file__))
 
 from env_base import EnvBase
 
-h0 = 2.0
+h0 = 0.5    # The goal height the agent should swing up the end effector.
 
 class Env(EnvBase):
     def __init__(self, config):
@@ -47,4 +47,5 @@ class Env(EnvBase):
         self.env.step(action)
 
     def check_goal(self):
-        return self.env._terminal()
+        s = self.env.state
+        return bool(-cos(s[0]) - cos(s[1] + s[0]) > h0)
