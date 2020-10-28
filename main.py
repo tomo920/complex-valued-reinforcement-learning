@@ -57,6 +57,7 @@ if __name__ == '__main__':
     parser.add_argument('--is_all_positive_action', action='store_true')
     parser.add_argument('--is_legal_action', action='store_true')
     parser.add_argument('--is_continuous', action='store_true')
+    parser.add_argument('--is_special_quantization', action='store_true')
 
     config = parser.parse_args()
 
